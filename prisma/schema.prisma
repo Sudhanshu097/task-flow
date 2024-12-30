@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String?
+  avatar_url    String?
+  role          UserRole  @default(TEAM_MEMBER)
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  projects      ProjectMember[]
+  tasks         Task[]    @relation("AssignedTasks")
+  created_tasks Task[]    @relation("CreatedTasks")
+  messages      Message[]
+}
+
+enum UserRole {
+  ADMIN
+  PROJECT_MANAGER
+  TEAM_MEMBER
+}
+
+model Project {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  status      ProjectStatus @default(IN_PROGRESS)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  members     ProjectMember[]
+  tasks       Task[]
+  boards      Board[]
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  COMPLETED
+  ON_HOLD
+}
+
+model ProjectMember {
+  id         String    @id @default(uuid())
+  user       User      @relation(fields: [user_id], references: [id])
+  user_id    String
+  project    Project   @relation(fields: [project_id], references: [id])
+  project_id String
+  role       UserRole  @default(TEAM_MEMBER)
+  joined_at  DateTime  @default(now())
+
+  @@unique([user_id, project_id])
+}
+
+model Board {
+  id          String    @id @default(uuid())
+  name        String
+  project     Project   @relation(fields: [project_id], references: [id])
+  project_id  String
+  columns     Column[]
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+}
+
+model Column {
+  id          String    @id @default(uuid())
+  name        String
+  order       Int
+  board       Board     @relation(fields: [board_id], references: [id])
+  board_id    String
+  tasks       Task[]
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+}
+
+model Task {
+  id           String    @id @default(uuid())
+  title        String
+  description  String?
+  priority     Priority  @default(MEDIUM)
+  status       TaskStatus @default(TODO)
+  due_date     DateTime?
+  column       Column    @relation(fields: [column_id], references: [id])
+  column_id    String
+  project      Project   @relation(fields: [project_id], references: [id])
+  project_id   String
+  assignee     User?     @relation("AssignedTasks", fields: [assignee_id], references: [id])
+  assignee_id  String?
+  creator      User      @relation("CreatedTasks", fields: [creator_id], references: [id])
+  creator_id   String
+  attachments  Attachment[]
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+model Attachment {
+  id         String    @id @default(uuid())
+  name       String
+  url        String
+  task       Task      @relation(fields: [task_id], references: [id])
+  task_id    String
+  created_at DateTime  @default(now())
+}
+
+model Message {
+  id         String    @id @default(uuid())
+  content    String
+  user       User      @relation(fields: [user_id], references: [id])
+  user_id    String
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+}
